@@ -29,7 +29,7 @@ const firebaseConfig = {
   measurementId: "G-785LXLP9X2"
 };
 
-const DB_VERSION = "business-manager-v5-stable"; 
+const DB_VERSION = "business-manager-v5-final"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -49,13 +49,13 @@ const PAYMENT_METHODS = [
 
 // --- Shared UI Components ---
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-6 ${className}`}>{children}</div>
+  <div className={`bg-white rounded-xl shadow-md border border-slate-100 p-6 ${className}`}>{children}</div>
 );
 
 const Button = ({ children, onClick, variant = "primary", className = "", disabled = false, type="button", icon }) => {
-  const baseStyle = "px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseStyle = "px-5 py-2.5 rounded-lg font-bold transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200",
+    primary: "bg-slate-900 text-white hover:bg-black shadow-lg shadow-slate-200",
     secondary: "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
     danger: "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100",
     outline: "border-2 border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50"
@@ -65,24 +65,24 @@ const Button = ({ children, onClick, variant = "primary", className = "", disabl
 
 const Input = ({ label, type = "text", value, onChange, placeholder, required = false, readOnly = false }) => (
   <div className="flex flex-col gap-2 w-full">
-    {label && <label className="text-xs font-bold text-slate-600 uppercase tracking-wider ml-1">{label}</label>}
+    {label && <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>}
     <input type={type} value={value} onChange={onChange} placeholder={placeholder} required={required} readOnly={readOnly}
-      className={`w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all text-slate-800 text-sm ${readOnly ? 'bg-slate-100' : 'bg-slate-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'}`} />
+      className={`w-full px-4 py-3 rounded-lg border border-slate-200 outline-none transition-all text-slate-800 text-sm ${readOnly ? 'bg-slate-100' : 'bg-slate-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'}`} />
   </div>
 );
 
 const TextArea = ({ label, value, onChange, placeholder, required = false }) => (
   <div className="flex flex-col gap-2 w-full">
-    {label && <label className="text-xs font-bold text-slate-600 uppercase tracking-wider ml-1">{label}</label>}
+    {label && <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>}
     <textarea value={value} onChange={onChange} placeholder={placeholder} required={required} rows={3}
-      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none transition-all text-slate-800 text-sm bg-slate-50/50 focus:bg-white resize-none" />
+      className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none transition-all text-slate-800 text-sm bg-slate-50/50 focus:bg-white resize-none" />
   </div>
 );
 
 const Select = ({ label, value, onChange, options }) => (
   <div className="flex flex-col gap-2 w-full">
-    {label && <label className="text-xs font-bold text-slate-600 uppercase tracking-wider ml-1">{label}</label>}
-    <select value={value} onChange={onChange} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none transition-all text-slate-800 bg-slate-50/50 focus:bg-white text-sm cursor-pointer">
+    {label && <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{label}</label>}
+    <select value={value} onChange={onChange} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-indigo-500 outline-none transition-all text-slate-800 bg-slate-50/50 focus:bg-white text-sm cursor-pointer">
       {options.map((opt, idx) => <option key={idx} value={opt.value}>{opt.label}</option>)}
     </select>
   </div>
@@ -129,24 +129,25 @@ const AuthScreen = ({ onLoginSuccess }) => {
     try {
         await signInWithEmailAndPassword(auth, email, formData.password);
         onLoginSuccess();
-    } catch (err) { setError("ফোন নাম্বার বা পাসওয়ার্ড ভুল হয়েছে।"); setLoading(false); }
+    } catch (err) { setError("ফোন নাম্বার বা পাসওয়ার্ড ভুল।"); setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md !p-8 shadow-xl border-t-4 border-indigo-600">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md !p-8 shadow-2xl border-t-4 border-indigo-600">
         <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg"><Store size={32} /></div>
-            <h1 className="text-2xl font-extrabold text-slate-800">Business Manager</h1>
-            <p className="text-slate-500 text-sm mt-1">আপনার ব্যবসার ডিজিটাল পার্টনার</p>
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-4 shadow-lg"><Store size={32} /></div>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Business Manager</h1>
+            <p className="text-slate-500 text-sm mt-1 font-medium">আপনার ব্যবসার ডিজিটাল পার্টনার</p>
         </div>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 flex items-center gap-2 border border-red-100 animate-pulse"><AlertCircle size={16}/> {error}</div>}
+        
         {view === 'login' && (
             <form onSubmit={handleLogin} className="space-y-5 animate-in fade-in">
                 <Input label="ফোন নাম্বার" placeholder="017xxxxxxxx" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
                 <Input label="পাসওয়ার্ড" type="password" placeholder="******" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-                <Button type="submit" className="w-full py-3.5" disabled={loading}>{loading ? 'লগিন হচ্ছে...' : 'লগিন করুন'} <ArrowRight size={18}/></Button>
-                <div className="text-center mt-6"><button type="button" onClick={() => setView('signup')} className="text-indigo-600 font-bold text-sm hover:underline mt-4">নতুন একাউন্ট খুলুন</button></div>
+                <Button type="submit" className="w-full py-3.5 bg-indigo-600 text-white hover:bg-indigo-700" disabled={loading}>{loading ? 'লগিন হচ্ছে...' : 'লগিন করুন'} <ArrowRight size={18}/></Button>
+                <div className="text-center mt-6"><button type="button" onClick={() => setView('signup')} className="text-indigo-600 font-bold text-sm hover:underline">নতুন একাউন্ট খুলুন</button></div>
             </form>
         )}
         {view === 'signup' && (
@@ -155,14 +156,14 @@ const AuthScreen = ({ onLoginSuccess }) => {
                 <Input label="ফোন নাম্বার" placeholder="017xxxxxxxx" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
                 <Input label="ঠিকানা" placeholder="Dhaka" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required />
                 <Input label="পাসওয়ার্ড" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required />
-                <Button type="submit" className="w-full py-3.5">ওটিপি পাঠান</Button>
+                <Button type="submit" className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white">ওটিপি পাঠান</Button>
                 <div className="text-center mt-4"><button type="button" onClick={() => setView('login')} className="text-slate-500 text-sm">লগিন করুন</button></div>
             </form>
         )}
         {view === 'otp' && (
             <div className="space-y-6 text-center animate-in zoom-in">
                 <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                    <p className="text-xs font-bold text-indigo-400 uppercase mb-2">ভেরিফিকেশন কোড (সিমুলেশন)</p>
+                    <p className="text-xs font-bold text-indigo-400 uppercase mb-2">ভেরিফিকেশন কোড</p>
                     <p className="text-3xl font-mono font-bold text-indigo-700 tracking-[0.3em]">{generatedOTP}</p>
                 </div>
                 <form onSubmit={handleCreateAccount} className="space-y-4 text-left">
@@ -202,8 +203,7 @@ export default function App() {
                 setShopProfile(defaultProfile);
             }
         } catch (e) {
-            console.error("Profile load error", e);
-            // Emergency fallback to prevent white screen
+            console.error("Profile Error", e);
             setShopProfile({ shopName: 'My Business', address: '', phone: '' });
         }
       }
@@ -227,6 +227,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
+      {/* Sidebar */}
       <aside className="w-72 bg-slate-900 text-white flex flex-col hidden md:flex">
         <div className="p-6 border-b border-white/10 flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-bold text-white shadow-lg">BM</div>
@@ -236,13 +237,13 @@ export default function App() {
             </div>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-          <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={20}/>} label="ড্যাশবোর্ড" />
-          <NavItem active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Package size={20}/>} label="ইনভেন্টরি" />
-          <NavItem active={activeTab === 'pos'} onClick={() => setActiveTab('pos')} icon={<ShoppingBag size={20}/>} label="POS (অর্ডার)" />
-          <NavItem active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<List size={20}/>} label="অর্ডার লিস্ট" />
-          <NavItem active={activeTab === 'customers'} onClick={() => setActiveTab('customers')} icon={<Users size={20}/>} label="কাস্টমার ডাটা" />
-          <NavItem active={activeTab === 'expenses'} onClick={() => setActiveTab('expenses')} icon={<CreditCard size={20}/>} label="খরচপাতি" />
-          <NavItem active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<Settings size={20}/>} label="সেটিংস" />
+          <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={20} />} label="ড্যাশবোর্ড" />
+          <NavItem active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Package size={20} />} label="ইনভেন্টরি" />
+          <NavItem active={activeTab === 'pos'} onClick={() => setActiveTab('pos')} icon={<ShoppingBag size={20} />} label="POS (অর্ডার)" />
+          <NavItem active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<List size={20} />} label="অর্ডার লিস্ট" />
+          <NavItem active={activeTab === 'customers'} onClick={() => setActiveTab('customers')} icon={<Users size={20} />} label="কাস্টমার ডাটা" />
+          <NavItem active={activeTab === 'expenses'} onClick={() => setActiveTab('expenses')} icon={<CreditCard size={20} />} label="খরচপাতি" />
+          <NavItem active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<Settings size={20} />} label="সেটিংস" />
         </nav>
         <div className="p-4 border-t border-white/10 bg-black/20">
            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl backdrop-blur-sm mb-3">
@@ -277,12 +278,12 @@ export default function App() {
 }
 
 const NavItem = ({ active, onClick, icon, label }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 scale-[1.02]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-    {icon} <span className="text-sm font-medium">{label}</span>
+  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-bold' : 'text-slate-500 hover:bg-slate-100 font-medium'}`}>
+    {icon} <span className="text-sm">{label}</span>
   </button>
 );
 
-// --- VIEW COMPONENTS ---
+// --- VIEWS ---
 
 const DashboardView = ({ products, orders, expenses }) => {
     const [showProfit, setShowProfit] = useState(false);
@@ -295,8 +296,9 @@ const DashboardView = ({ products, orders, expenses }) => {
 
     const stats = useMemo(() => {
         const totalSales = orders.reduce((s, o) => s + parseFloat(o.totalAmount || 0), 0);
-        const totalExpense = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+        const totalPaid = orders.reduce((s, o) => s + parseFloat(o.paidAmount || 0), 0);
         const totalDue = orders.reduce((s, o) => s + parseFloat(o.dueAmount || 0), 0);
+        const totalExpense = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
         
         // Accurate Net Profit Calculation
         // Profit = Sales - Cost of Goods Sold (Sum of buyPrice of all sold items) - Expenses
@@ -308,7 +310,7 @@ const DashboardView = ({ products, orders, expenses }) => {
         });
         
         const netProfit = totalSales - totalCOGS - totalExpense;
-        return { totalSales, totalExpense, totalDue, netProfit };
+        return { totalSales, totalPaid, totalDue, totalExpense, netProfit };
     }, [orders, expenses]);
 
     const chartData = useMemo(() => orders.slice(-7).map(o => ({ name: o.customerName?.slice(0, 5), sales: o.totalAmount })), [orders]);
@@ -328,7 +330,7 @@ const DashboardView = ({ products, orders, expenses }) => {
                 />
                 <StatCard title="মোট পণ্য" value={products.length} icon={<Package className="text-indigo-600"/>} color="bg-indigo-50" />
             </div>
-            <Card className="h-80">
+            <Card className="h-80 shadow-md">
                 <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2"><TrendingUp size={18} className="text-indigo-600"/> বিক্রয় গ্রাফ (সাম্প্রতিক)</h3>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name"/><YAxis/><Tooltip/><Area type="monotone" dataKey="sales" stroke="#6366f1" fill="#6366f120" strokeWidth={3}/></AreaChart>
@@ -365,7 +367,7 @@ const InventoryView = ({ products, user }) => {
                         <tr key={p.id} className="hover:bg-slate-50">
                             <td className="p-4"><p className="font-bold">{p.name}</p><p className="text-[10px] text-slate-400">{p.fabric} | {p.neck}</p></td>
                             <td className="p-4"><p className="text-slate-400">In: ৳{p.buyPrice}</p><p className="font-bold text-indigo-600">Out: ৳{p.sellPrice}</p></td>
-                            <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full font-bold text-xs">{p.stock} pcs</span></td>
+                            <td className="p-4 text-center"><span className={`px-3 py-1 rounded-full font-bold text-xs ${parseInt(p.stock) < 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>{p.stock} pcs</span></td>
                             <td className="p-4 text-right flex gap-2 justify-end items-center mt-2">
                                 <button onClick={()=>deleteDoc(doc(db,'artifacts',DB_VERSION,'users',user.uid,'products',p.id))} className="text-red-300 hover:text-red-500 transition"><Trash2 size={16}/></button>
                             </td>
@@ -388,7 +390,7 @@ const InventoryView = ({ products, user }) => {
                                 <Input label="বেচা দাম" type="number" value={form.sellPrice} onChange={e=>setForm({...form,sellPrice:e.target.value})}/>
                                 <Input label="স্টক" type="number" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})}/>
                             </div>
-                            <Button type="submit" className="w-full py-4 mt-2">সেভ করুন</Button>
+                            <Button type="submit" className="w-full mt-4 py-3">সেভ করুন</Button>
                         </form>
                     </Card>
                 </div>
@@ -418,7 +420,9 @@ const POSView = ({ products, user, shopProfile }) => {
     };
 
     const removeFromCart = (id) => setCart(cart.filter(i => i.id !== id));
-    const updateQty = (id, d) => setCart(cart.map(i => i.id === id ? {...i, qty: Math.max(1, i.qty + d)} : i));
+    // Manual Quantity Update Fix
+    const updateQty = (id, val) => setCart(cart.map(i => i.id === id ? {...i, qty: parseInt(val) || 1} : i));
+    const incrementQty = (id, d) => setCart(cart.map(i => i.id === id ? {...i, qty: Math.max(1, i.qty + d)} : i));
     const updateSize = (id, s) => setCart(cart.map(i => i.id === id ? {...i, size: s} : i));
 
     const financials = useMemo(() => {
@@ -435,40 +439,47 @@ const POSView = ({ products, user, shopProfile }) => {
             ...financials, paidAmount: customer.advance, status: financials.due > 0 ? 'Due' : 'Paid', lastPaymentMethod: paymentMethod, createdAt: serverTimestamp()
         };
         const ref = await addDoc(collection(db, 'artifacts', DB_VERSION, 'users', user.uid, 'orders'), orderData);
-        setInvoiceOrder({...orderData, id: ref.id});
+        setInvoiceOrder({...orderData, id: ref.id, createdAt: new Date() }); // Fix for immediate print
         setCart([]); setCustomer({name:'', phone:'', address:'', deliveryCharge:'0', advance:'0'});
     };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
             <div className="lg:col-span-2 space-y-4">
-                <div className="relative flex gap-2"><div className="relative flex-1"><Search className="absolute left-3 top-3 text-slate-400" size={18}/><input type="text" placeholder="পণ্য খুঁজুন..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white" value={filter} onChange={e=>setFilter(e.target.value)}/></div><Button variant="outline" onClick={addCustomItem} icon={<Plus size={18}/>}>কাস্টম</Button></div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">{products.filter(p=>p.name.toLowerCase().includes(filter.toLowerCase())).map(p => (
-                    <div key={p.id} onClick={()=>addToCart(p)} className="bg-white p-4 rounded-xl border hover:shadow-md cursor-pointer transition">
-                        <p className="font-bold text-sm mb-1">{p.name}</p><p className="text-indigo-600 font-black">৳{p.sellPrice}</p>
-                    </div>
-                ))}</div>
+                <div className="relative flex gap-2"><div className="relative flex-1"><Search className="absolute left-3 top-3.5 text-slate-400" size={18}/><input type="text" placeholder="পণ্য খুঁজুন..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white" value={filter} onChange={e=>setFilter(e.target.value)}/></div><Button variant="outline" onClick={addCustomItem} icon={<Plus size={18}/>}>কাস্টম</Button></div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2 custom-scrollbar h-[500px]">
+                    {products.filter(p=>p.name.toLowerCase().includes(filter.toLowerCase())).map(p => (
+                        <div key={p.id} onClick={()=>addToCart(p)} className="bg-white p-4 rounded-xl border hover:shadow-md cursor-pointer transition relative group">
+                            <p className="font-bold text-sm mb-1">{p.name}</p><p className="text-[10px] text-slate-400 mb-2 uppercase font-bold">{p.fabric}</p><p className="text-indigo-600 font-black text-lg">৳{p.sellPrice}</p>
+                            <div className="absolute top-0 right-0 p-1.5 bg-indigo-500 rounded-bl-xl opacity-0 group-hover:opacity-100 transition"><Plus size={14} className="text-white"/></div>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <Card className="flex flex-col gap-4 shadow-lg border-indigo-50">
+            <Card className="flex flex-col gap-4 shadow-lg border-indigo-50 h-fit">
                 <h3 className="font-bold border-b pb-2 flex items-center gap-2"><ShoppingBag size={18}/> অর্ডার লিস্ট</h3>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">{cart.map(i => (
-                    <div key={i.id} className="bg-slate-50 p-2 rounded relative group">
+                <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[300px]">{cart.map(i => (
+                    <div key={i.id} className="bg-slate-50 p-2 rounded relative group border border-slate-200">
                         <div className="flex justify-between text-xs mb-1"><strong>{i.name}</strong><button onClick={()=>removeFromCart(i.id)} className="text-red-400"><X size={12}/></button></div>
                         <div className="flex justify-between items-center gap-2">
-                            <select value={i.size} onChange={e=>updateCart(i.id, 'size', e.target.value)} className="text-[10px] border p-0.5 rounded">{SIZES.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                            <input type="number" value={i.qty} onChange={e=>updateCart(i.id, 'qty', parseInt(e.target.value))} className="w-12 text-[10px] border p-0.5 rounded" />
-                            <span className="text-[10px] font-bold">৳{i.sellPrice * i.qty}</span>
+                            <select value={i.size} onChange={e=>updateSize(i.id, e.target.value)} className="text-[10px] border p-0.5 rounded">{SIZES.map(s=><option key={s} value={s}>{s}</option>)}</select>
+                            <div className="flex items-center bg-white border rounded px-1 gap-1">
+                                <button onClick={()=>incrementQty(i.id,-1)} className="px-1 text-indigo-600 font-bold">-</button>
+                                {/* Manual Input Fix */}
+                                <input type="number" value={i.qty} onChange={(e)=>updateQty(i.id, e.target.value)} className="w-8 text-center text-xs font-bold outline-none"/>
+                                <button onClick={()=>incrementQty(i.id,1)} className="px-1 text-indigo-600 font-bold">+</button>
+                            </div>
+                            <p className="text-xs font-black">৳{i.sellPrice * i.qty}</p>
                         </div>
                     </div>
                 ))}</div>
-                <div className="space-y-3 border-t pt-4">
-                    <Input placeholder="কাস্টমার নাম" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/>
-                    <Input placeholder="মোবাইল নম্বর" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/>
+                <div className="space-y-3 border-t pt-2 text-xs">
+                    <div className="flex gap-2"><Input placeholder="নাম" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/><Input placeholder="মোবাইল" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/></div>
                     <TextArea placeholder="ঠিকানা" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})}/>
                     <div className="grid grid-cols-2 gap-2"><Input label="ডেলিভারি" type="number" value={customer.deliveryCharge} onChange={e=>setCustomer({...customer,deliveryCharge:e.target.value})}/><Input label="অ্যাডভান্স" type="number" value={customer.advance} onChange={e=>setCustomer({...customer,advance:e.target.value})}/></div>
-                    <div className="grid grid-cols-3 gap-2">{PAYMENT_METHODS.slice(0,3).map(m => (<button key={m.id} onClick={() => setPaymentMethod(m.id)} className={`p-1 text-[10px] font-bold border rounded ${paymentMethod === m.id ? 'bg-indigo-50 border-indigo-500' : ''}`}>{m.label}</button>))}</div>
-                    <div className="flex justify-between font-black text-lg border-t pt-3"><span>মোট বিল:</span><span>৳{financials.total}</span></div>
-                    <Button onClick={handleOrder} className="w-full py-4 shadow-xl">অর্ডার কনফার্ম</Button>
+                    <div className="grid grid-cols-3 gap-2">{PAYMENT_METHODS.slice(0,3).map(m => (<button key={m.id} onClick={() => setPaymentMethod(m.id)} className={`p-1 text-[9px] font-bold border rounded ${paymentMethod === m.id ? 'bg-indigo-600 text-white' : ''}`}>{m.label}</button>))}</div>
+                    <div className="flex justify-between font-black text-lg border-t pt-2"><span>মোট বিল:</span><span>৳{financials.total}</span></div>
+                    <Button onClick={handleOrder} className="w-full shadow-xl">অর্ডার কনফার্ম</Button>
                 </div>
             </Card>
             {invoiceOrder && <InvoiceModal order={invoiceOrder} shopProfile={shopProfile} onClose={()=>setInvoiceOrder(null)} />}
@@ -496,26 +507,16 @@ const OrderListView = ({ orders, user, shopProfile }) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <h2 className="text-xl font-bold">অর্ডার রেকর্ড</h2>
             <Card className="p-0 overflow-hidden shadow-sm"><table className="w-full text-left text-sm border-collapse"><thead className="bg-slate-50 border-b uppercase text-[10px] font-bold text-slate-500"><tr><th className="p-4">মেমো</th><th className="p-4">কাস্টমার</th><th className="p-4">বিল</th><th className="p-4">বকেয়া</th><th className="p-4 text-center">স্ট্যাটাস</th><th className="p-4 text-right">একশন</th></tr></thead>
                 <tbody className="divide-y">{orders.map(o => (<tr key={o.id} className="hover:bg-slate-50"><td className="p-4 text-slate-400">#{o.id.slice(-6).toUpperCase()}</td><td className="p-4 font-bold">{o.customerName}<br/><span className="text-[10px] font-normal text-slate-400">{o.phone}</span></td><td className="p-4">৳{o.totalAmount}</td><td className="p-4"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${o.dueAmount > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>৳{o.dueAmount}</span></td><td className="p-4 text-right flex gap-3 justify-end items-center mt-2">
-                    <button onClick={()=>setInvoice(o)} className="text-indigo-600 hover:scale-110 transition"><Printer size={16}/></button>
+                    <button onClick={()=>setInvoice(o)} className="text-indigo-600 hover:scale-110 transition"><Printer size={18}/></button>
                     {o.dueAmount > 0 && <button onClick={()=>setEditPayment(o)} className="bg-indigo-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">টাকা জমা</button>}
                 </td></tr>))}</tbody>
             </table></Card>
             {invoice && <InvoiceModal order={invoice} shopProfile={shopProfile} onClose={()=>setInvoice(null)} />}
-            {editPayment && (
-                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-sm animate-in zoom-in"><div className="flex justify-between items-center mb-4"><h3>পেমেন্ট আপডেট</h3><button onClick={()=>setEditPayment(null)}><X size={20}/></button></div>
-                        <div className="space-y-4">
-                            <Input label="ডেলিভারি চার্জ (এডিট)" type="number" value={updatedDelivery} onChange={e => setUpdatedDelivery(e.target.value)} />
-                            <Input label="জমা পরিমাণ" type="number" value={paymentAmt} onChange={e => setPaymentAmt(e.target.value)} autoFocus />
-                            <Button onClick={handleUpdatePayment} className="w-full mt-4">আপডেট করুন</Button>
-                        </div>
-                    </Card>
-                </div>
-            )}
+            {editPayment && <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"><Card className="w-full max-w-sm animate-in zoom-in"><div className="flex justify-between items-center mb-4"><h3>পেমেন্ট আপডেট</h3><button onClick={()=>setEditPayment(null)}><X size={20}/></button></div><div className="space-y-4"><Input label="ডেলিভারি চার্জ (এডিট)" type="number" value={updatedDelivery} onChange={e => setUpdatedDelivery(e.target.value)} /><Input label="জমা পরিমাণ" type="number" value={paymentAmt} onChange={e => setPaymentAmt(e.target.value)} autoFocus /><Button onClick={handleUpdatePayment} className="w-full mt-4">আপডেট করুন</Button></div></Card></div>}
         </div>
     );
 };
@@ -527,8 +528,11 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
         const win = window.open('', '', 'height=1123,width=794');
         win.document.write(`<html><head><title>Invoice</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-white print:p-0">${content}</body></html>`);
         win.document.close();
-        setTimeout(() => { win.print(); win.close(); }, 500);
+        setTimeout(() => win.print(), 500);
     };
+    // Safe date fix to prevent crash
+    const dateStr = order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
+    
     return (
         <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white rounded-xl max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl">
@@ -536,20 +540,18 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
                 <div className="overflow-y-auto p-10 bg-white" ref={printRef}>
                     <div className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
                         <div><h1 className="text-3xl font-black uppercase text-indigo-700">{shopProfile.shopName}</h1><p className="text-sm font-bold text-slate-500">{shopProfile.address}</p><p className="text-sm font-bold text-slate-500">{shopProfile.phone}</p></div>
-                        <div className="text-right uppercase"><h2 className="text-4xl font-black text-slate-200">Invoice</h2><p className="font-bold text-slate-800">#INV-{order.id?.slice(-6).toUpperCase()}</p></div>
+                        <div className="text-right uppercase"><h2 className="text-4xl font-black text-slate-200">Invoice</h2><p className="font-bold text-slate-800">#INV-{order.id?.slice(-6).toUpperCase()}</p><p className="text-xs text-slate-500">{dateStr}</p></div>
                     </div>
-                    <div className="grid grid-cols-2 mb-8 gap-10">
-                        <div><p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Bill To:</p><p className="text-lg font-black">{order.customerName}</p><p className="text-sm text-slate-600">{order.phone}</p><p className="text-sm text-slate-600">{order.address}</p></div>
-                        <div className="text-right"><p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Date:</p><p className="font-bold">{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()}</p></div>
-                    </div>
-                    <table className="w-full mb-8 border-collapse"><thead className="bg-slate-800 text-white text-xs uppercase"><tr><th className="p-3 text-left">Item</th><th className="p-3">Qty</th><th className="p-3 text-right">Total</th></tr></thead>
-                        <tbody className="divide-y border-b">{order.items?.map((i,idx)=>(<tr key={idx} className="text-sm"><td className="p-3 font-bold">{i.name} ({i.size})</td><td className="p-3 text-center">{i.qty}</td><td className="p-3 text-right">৳{i.sellPrice * i.qty}</td></tr>))}</tbody>
+                    <div className="grid grid-cols-2 mb-8 gap-10"><div><p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Bill To:</p><p className="text-lg font-black">{order.customerName}</p><p className="text-sm text-slate-600">{order.phone}</p><p className="text-sm text-slate-600">{order.address}</p></div></div>
+                    <table className="w-full mb-8 border-collapse"><thead className="bg-slate-800 text-white text-xs uppercase"><tr><th className="p-3 text-left">Item</th><th className="p-3">Qty</th><th className="p-3 text-right">Price</th><th className="p-3 text-right">Total</th></tr></thead>
+                        <tbody className="divide-y border-b">{order.items?.map((i,idx)=>(<tr key={idx} className="text-sm"><td className="p-3 font-bold">{i.name} ({i.size})</td><td className="p-3 text-center">{i.qty}</td><td className="p-3 text-right">৳{i.sellPrice}</td><td className="p-3 text-right font-black">৳{i.sellPrice * i.qty}</td></tr>))}</tbody>
                     </table>
                     <div className="flex justify-end"><div className="w-64 space-y-2 bg-slate-50 p-4 rounded-xl text-sm">
                         <div className="flex justify-between"><span>Sub-total:</span><span>৳{order.subTotal}</span></div>
                         <div className="flex justify-between"><span>Delivery:</span><span>৳{order.deliveryCharge}</span></div>
                         <div className="flex justify-between text-lg font-black border-t pt-2"><span>Total:</span><span>৳{order.totalAmount}</span></div>
                         <div className="flex justify-between text-sm font-bold text-emerald-600"><span>Paid:</span><span>৳{order.paidAmount}</span></div>
+                        {/* Due Fix */}
                         <div className="flex justify-between text-sm font-bold text-red-600"><span>Due:</span><span>৳{order.dueAmount}</span></div>
                     </div></div>
                 </div>
@@ -613,10 +615,10 @@ const CustomerView = ({ orders }) => {
     }, [orders]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in">
             <h2 className="text-xl font-bold">কাস্টমার ডাটাবেজ</h2>
-            <Card className="p-0 overflow-hidden shadow-sm"><table className="w-full text-left text-sm border-collapse"><thead className="bg-slate-50 border-b uppercase text-[10px] font-bold text-slate-500"><tr><th className="p-4">নাম ও ফোন</th><th className="p-4 text-center">অর্ডার সংখ্যা</th><th className="p-4 text-right">মোট বিক্রয়</th></tr></thead>
-                <tbody className="divide-y">{customers.map((c, i) => (<tr key={i} className="hover:bg-slate-50"><td className="p-4 font-bold">{c.name}<br/><span className="text-[10px] font-normal text-slate-400">{c.phone}</span></td><td className="p-4 text-center"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold">{c.totalOrders} বার</span></td><td className="p-4 text-right font-black text-indigo-600">৳{c.totalSpent.toLocaleString()}</td></tr>))}</tbody>
+            <Card className="p-0 overflow-hidden shadow-sm"><table className="w-full text-left text-sm border-collapse"><thead className="bg-slate-50 border-b uppercase text-[10px] font-bold text-slate-500"><tr><th className="p-4">নাম ও ফোন</th><th className="p-4">ঠিকানা</th><th className="p-4 text-center">অর্ডার সংখ্যা</th><th className="p-4 text-right">মোট বিক্রয়</th></tr></thead>
+                <tbody className="divide-y">{customers.map((c, i) => (<tr key={i} className="hover:bg-slate-50"><td className="p-4 font-bold">{c.name}<br/><span className="text-[10px] font-normal text-slate-400">{c.phone}</span></td><td className="p-4 text-xs text-slate-500 max-w-xs truncate">{c.address}</td><td className="p-4 text-center"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold">{c.totalOrders} বার</span></td><td className="p-4 text-right font-black text-indigo-600">৳{c.totalSpent.toLocaleString()}</td></tr>))}</tbody>
             </table></Card>
         </div>
     );
@@ -624,11 +626,7 @@ const CustomerView = ({ orders }) => {
 
 const SettingsView = ({ profile, user }) => {
     const [data, setData] = useState(profile);
-    const handleSave = async (e) => {
-        e.preventDefault();
-        await setDoc(doc(db, 'artifacts', DB_VERSION, 'users', user.uid, 'settings', 'profile'), data, {merge: true});
-        alert("আপনার তথ্য আপডেট হয়েছে!");
-    };
+    const handleSave = async (e) => { e.preventDefault(); await setDoc(doc(db, 'artifacts', DB_VERSION, 'users', user.uid, 'settings', 'profile'), data, {merge: true}); alert("আপনার তথ্য আপডেট হয়েছে!"); };
     return (
         <div className="max-w-xl mx-auto"><Card className="border-t-4 border-indigo-600 shadow-xl"><div className="flex items-center gap-4 mb-8 border-b pb-6"><div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm"><Settings size={28}/></div><div><h2 className="text-2xl font-bold text-slate-800">ব্যবসায়িক প্রোফাইল</h2><p className="text-sm text-slate-500">ইনভয়েসে এই তথ্যগুলো ব্যবহার হবে</p></div></div><form onSubmit={handleSave} className="space-y-6"><Input label="দোকানের নাম" value={data.shopName} onChange={e=>setData({...data,shopName:e.target.value})} required/><Input label="মোবাইল নাম্বার" value={data.phone} onChange={e=>setData({...data,phone:e.target.value})} required/><TextArea label="দোকানের ঠিকানা" value={data.address} onChange={e=>setData({...data,address:e.target.value})} required/><Button type="submit" className="w-full py-4 shadow-indigo-100" icon={<Save size={20}/>}>তথ্য আপডেট করুন</Button></form></Card></div>
     );
