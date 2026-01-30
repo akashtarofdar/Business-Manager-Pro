@@ -17,12 +17,18 @@ import {
   deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc 
 } from 'firebase/firestore';
 
-// --- Firebase Configuration from Environment ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'business-manager-v7';
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// --- Firebase Configuration ---
+// Canvas এনভায়রনমেন্টের বাইরে সরাসরি কনফিগ অবজেক্টটি ব্যবহার করুন
+const firebaseConfig = {
+  apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
+  authDomain: "business-manager-7d11a.firebaseapp.com",
+  projectId: "business-manager-7d11a",
+  storageBucket: "business-manager-7d11a.firebasestorage.app",
+  messagingSenderId: "655200131586",
+  appId: "1:655200131586:web:0b41af39a725542b8ae51b"
+};
+
+const appId = "business-manager-v7"; // সরাসরি একটি নাম দিন
 
 // --- Constants ---
 const NECK_TYPES = ['গোল গলা', 'ভি গলা', 'ক্রস ভি গলা', 'কলার', 'ভি কলার', 'পাঞ্জাবী কলার'];
