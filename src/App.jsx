@@ -10,25 +10,35 @@ import {
 } from 'recharts';
 import { initializeApp } from 'firebase/app';
 import { 
-  getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously 
+  getAuth, onAuthStateChanged, signInAnonymously 
 } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, query, onSnapshot, doc, 
   deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc 
 } from 'firebase/firestore';
 
-// --- Firebase Configuration ---
-// Canvas এনভায়রনমেন্টের বাইরে সরাসরি কনফিগ অবজেক্টটি ব্যবহার করুন
-const firebaseConfig = {
-  apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
-  authDomain: "business-manager-7d11a.firebaseapp.com",
-  projectId: "business-manager-7d11a",
-  storageBucket: "business-manager-7d11a.firebasestorage.app",
-  messagingSenderId: "655200131586",
-  appId: "1:655200131586:web:0b41af39a725542b8ae51b"
-};
+// --- ফায়ারবেস কনফিগারেশন ---
+// Vercel-এ লাইভ করার জন্য এখানে আপনার আসল Firebase ডাটা অবশ্যই বসাতে হবে।
+let firebaseConfig;
+try {
+  // ক্যানভাস এনভায়রনমেন্টের জন্য চেক
+  firebaseConfig = JSON.parse(__firebase_config);
+} catch (e) {
+  // আপনার আসল কনফিগারেশন এখানে বসান
+  firebaseConfig = {
+    apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
+    authDomain: "business-manager-7d11a.firebaseapp.com",
+    projectId: "business-manager-7d11a",
+    storageBucket: "business-manager-7d11a.firebasestorage.app",
+    messagingSenderId: "655200131586",
+    appId: "1:655200131586:web:0b41af39a725542b8ae51b"
+  };
+}
 
-const appId = "business-manager-v7"; // সরাসরি একটি নাম দিন
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'business-manager-v7-live';
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // --- Constants ---
 const NECK_TYPES = ['গোল গলা', 'ভি গলা', 'ক্রস ভি গলা', 'কলার', 'ভি কলার', 'পাঞ্জাবী কলার'];
@@ -100,11 +110,7 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        await signInAnonymously(auth);
       } catch (err) {
         console.error("Auth error:", err);
       }
@@ -154,7 +160,6 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
-      {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-6 right-6 z-[200] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-right-full border ${toast.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
           {toast.type === 'error' ? <AlertCircle size={20}/> : <CheckCircle size={20}/>}
@@ -180,7 +185,7 @@ export default function App() {
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{shopProfile?.shopName?.charAt(0)}</div>
-             <div className="overflow-hidden"><p className="text-sm font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">Manager ID: {user?.uid.slice(0,8)}</p></div>
+             <div className="overflow-hidden"><p className="text-sm font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">ID: {user?.uid.slice(0,8)}</p></div>
            </div>
         </div>
       </aside>
@@ -212,10 +217,8 @@ const NavItem = ({ active, onClick, icon, label }) => (
 );
 
 // --- VIEW COMPONENTS ---
-
 const DashboardView = ({ products, orders, expenses }) => {
     const [showProfit, setShowProfit] = useState(false);
-    
     const stats = useMemo(() => {
         const totalSales = orders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0);
         const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
@@ -239,7 +242,7 @@ const DashboardView = ({ products, orders, expenses }) => {
                 <StatCard title="মোট পণ্য" value={products.length} icon={<Package className="text-indigo-600"/>} color="bg-indigo-50" />
             </div>
             <Card className="h-96 shadow-lg border-none">
-                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ (সাম্প্রতিক)</h3>
+                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ</h3>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{bottom: 20, left: 10}}>
                         <defs><linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
@@ -319,7 +322,6 @@ const InventoryView = ({ products, user, showToast }) => {
                         <td className="p-5 text-right"><div className="flex justify-end gap-2"><button onClick={()=>handleEdit(p)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition"><Edit2 size={16}/></button><button onClick={async () => { if(confirm("নিশ্চিত তো?")) { await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'products', p.id)); showToast("পণ্য ডিলিট হয়েছে"); } }} className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-500 transition"><Trash2 size={16}/></button></div></td>
                       </tr>
                     ))}
-                    {products.length === 0 && <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium italic">কোন পণ্য পাওয়া যায়নি</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -469,10 +471,8 @@ const OrderListView = ({ orders, user, shopProfile, showToast }) => {
     const handleUpdatePayment = async () => {
         const amt = Number(payData.amount) || 0;
         const del = Number(payData.delivery);
-        
         const newPaid = Number(editPayment.paidAmount) + amt;
-        const sub = Number(editPayment.subTotal);
-        const newTotal = sub + del;
+        const newTotal = Number(editPayment.subTotal) + del;
         const newDue = newTotal - newPaid;
 
         try {
@@ -595,8 +595,6 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
                         <div className="flex justify-between text-sm font-bold text-emerald-600"><span>Paid</span><span>- ৳{order.paidAmount}</span></div>
                         <div className="flex justify-between text-lg font-black text-rose-600 pt-2 border-t border-slate-200"><span>Due</span><span>৳{order.dueAmount}</span></div>
                     </div></div>
-                    
-                    <div className="mt-16 text-center border-t border-dashed border-slate-200 pt-8"><p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Thank you for your business</p></div>
                 </div>
             </div>
         </div>
@@ -605,22 +603,14 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
 
 const ExpenseView = ({ expenses, user, showToast }) => {
     const [form, setForm] = useState({ title: '', amount: '', category: 'Marketing' });
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'expenses'), { 
-            ...form, 
-            amount: Number(form.amount),
-            createdAt: serverTimestamp() 
-          });
+          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'expenses'), { ...form, amount: Number(form.amount), createdAt: serverTimestamp() });
           setForm({ title: '', amount: '', category: 'Marketing' });
           showToast("খরচ সেভ করা হয়েছে");
-        } catch (err) {
-          showToast("এরর হয়েছে", "error");
-        }
+        } catch (err) { showToast("এরর হয়েছে", "error"); }
     };
-
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in">
             <Card><h3 className="font-black mb-8 flex items-center gap-2 text-xl"><CreditCard size={24} className="text-rose-500"/> খরচ এন্ট্রি</h3>
@@ -646,14 +636,13 @@ const ExpenseView = ({ expenses, user, showToast }) => {
                             </div>
                         </div>
                     ))}
-                    {expenses.length === 0 && <p className="text-center p-10 text-slate-400 italic">কোন খরচ নেই</p>}
                 </div>
             </div>
         </div>
     );
 };
 
-const CustomerView = ({ orders, user, showToast }) => {
+const CustomerView = ({ orders, user }) => {
     const customers = useMemo(() => {
         const map = {};
         orders.forEach(o => {
@@ -663,7 +652,6 @@ const CustomerView = ({ orders, user, showToast }) => {
         });
         return Object.values(map);
     }, [orders]);
-
     return (
         <div className="space-y-8 animate-in fade-in">
             <h2 className="text-2xl font-black text-slate-800">কাস্টমার ডাটাবেজ</h2>
@@ -690,9 +678,7 @@ const CustomerView = ({ orders, user, showToast }) => {
 
 const SettingsView = ({ profile, user, onUpdate, showToast }) => {
     const [data, setData] = useState(profile);
-    
     useEffect(() => { if(profile) setData(profile); }, [profile]);
-
     const handleSave = async (e) => { 
         e.preventDefault(); 
         if (!user) return;
@@ -700,11 +686,8 @@ const SettingsView = ({ profile, user, onUpdate, showToast }) => {
           await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'), data, {merge: true}); 
           onUpdate(data);
           showToast("প্রোফাইল আপডেট সফল হয়েছে"); 
-        } catch (err) {
-          showToast("আপডেট করা যায়নি", "error");
-        }
+        } catch (err) { showToast("আপডেট করা যায়নি", "error"); }
     };
-
     return (
         <div className="max-w-2xl mx-auto animate-in fade-in">
             <Card className="border-t-8 border-indigo-600 shadow-2xl overflow-hidden relative">
@@ -715,7 +698,7 @@ const SettingsView = ({ profile, user, onUpdate, showToast }) => {
                 </div>
                 <form onSubmit={handleSave} className="space-y-6 relative z-10">
                     <Input label="দোকানের নাম" value={data?.shopName} onChange={e=>setData({...data,shopName:e.target.value})} required/>
-                    <Input label="মোবাইল নাম্বার" value={data?.phone} onChange={e=>setData({...data,phone:e.target.value})} required/>
+                    <Input label="মোাবাইল নাম্বার" value={data?.phone} onChange={e=>setData({...data,phone:e.target.value})} required/>
                     <Input label="দোকানের ঠিকানা" value={data?.address} onChange={e=>setData({...data,address:e.target.value})} required/>
                     <Button type="submit" className="w-full py-4 text-lg shadow-xl shadow-indigo-100 mt-4" icon={<Save size={20}/>}>তথ্য আপডেট করুন</Button>
                 </form>
@@ -734,6 +717,8 @@ const Select = ({ label, value, onChange, options }) => (
 );
 
 // CSS for hiding scrollbar
-const styleSheet = document.createElement("style");
-styleSheet.innerText = `.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`;
-document.head.appendChild(styleSheet);
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = `.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`;
+  document.head.appendChild(styleSheet);
+}
