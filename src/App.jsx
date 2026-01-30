@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ShoppingBag, CreditCard, Users, Menu, X, Plus, Search, 
   Trash2, Save, Printer, AlertCircle, Package, Phone, CheckCircle, FileText, 
   Settings, List, DollarSign, Eye, EyeOff, Banknote, Smartphone, Landmark, 
-  Edit2, Info, MapPin, TrendingUp, Minus, Check, LogOut, Store, ArrowRight, Lock, Filter, ChevronRight, UserPlus, LogIn
+  Edit2, Info, MapPin, TrendingUp, Minus, Check, LogOut, Store, ArrowRight, Lock, Filter, ChevronRight, UserPlus, LogIn, Calendar
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
@@ -14,22 +14,23 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, query, onSnapshot, doc, 
-  deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc 
+  deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc, where, getDocs, writeBatch
 } from 'firebase/firestore';
 
 // --- ফায়ারবেস কনফিগারেশন ---
+// ক্যানভাস এনভায়রনমেন্টে এরর এড়াতে এনভায়রনমেন্ট কনফিগ অগ্রাধিকার দেওয়া হয়েছে
 let firebaseConfig;
 try {
   firebaseConfig = JSON.parse(__firebase_config);
 } catch (e) {
-  // আপনার আসল কনফিগারেশন এখানে বসান
   firebaseConfig = {
     apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
     authDomain: "business-manager-7d11a.firebaseapp.com",
     projectId: "business-manager-7d11a",
     storageBucket: "business-manager-7d11a.firebasestorage.app",
     messagingSenderId: "655200131586",
-    appId: "1:655200131586:web:0b41af39a725542b8ae51b"
+    appId: "1:655200131586:web:0b41af39a725542b8ae51b",
+    measurementId: "G-785LXLP9X2"
   };
 }
 
@@ -106,7 +107,6 @@ const AuthScreen = ({ showToast }) => {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        // প্রোফাইল ইনিশিয়ালাইজেশন
         await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'), {
           shopName: shopName || "My Shop",
           phone: email.split('@')[0],
@@ -132,19 +132,16 @@ const AuthScreen = ({ showToast }) => {
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">Manager Pro</h1>
           <p className="text-slate-400 font-bold text-xs uppercase mt-1 tracking-widest">Business Partner</p>
         </div>
-
         <form onSubmit={handleAuth} className="space-y-5">
           {!isLogin && (
             <Input label="দোকানের নাম" placeholder="যেমন: আকাশ ফ্যাশন" value={shopName} onChange={e => setShopName(e.target.value)} required />
           )}
           <Input label="ইমেইল" type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
           <Input label="পাসওয়ার্ড" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-          
           <Button type="submit" className="w-full py-4 text-lg" disabled={loading} icon={isLogin ? <LogIn size={20}/> : <UserPlus size={20}/>}>
             {loading ? "অপেক্ষা করুন..." : (isLogin ? "লগইন করুন" : "অ্যাকাউন্ট খুলুন")}
           </Button>
         </form>
-
         <div className="mt-8 text-center pt-6 border-t border-slate-100">
           <button onClick={() => setIsLogin(!isLogin)} className="text-indigo-600 font-black text-sm hover:underline">
             {isLogin ? "নতুন অ্যাকাউন্ট খুলতে চান? রেজিস্টার করুন" : "আগে অ্যাকাউন্ট খুলেছেন? লগইন করুন"}
@@ -171,16 +168,24 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Auth Logic
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // রুল ৩ অনুযায়ী টোকেন ম্যাচ না করলে এনোনিমাস লগইন ট্রাই করবে যাতে কোড ক্রাশ না করে
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } catch (tokenErr) {
+            console.error("Token sign-in error, falling back to anonymous:", tokenErr);
+            await signInAnonymously(auth);
+          }
+        } else {
+          await signInAnonymously(auth);
         }
-        // If not environment token, wait for user manual login
-      } catch (err) {
-        console.error("Auth error:", err);
+      } catch (err) { 
+        console.error("Auth initialization error:", err); 
+      } finally {
+        // লোডিং বন্ধ হবে শুধুমাত্র অথেন্টিকেশন স্টেট সেট হওয়ার পর
       }
     };
     initAuth();
@@ -191,31 +196,25 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Data Fetching (User Scoped)
   useEffect(() => {
     if (!user) return;
-
-    // Rule 1: artifacts/{appId}/users/{userId}/...
     const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
     const unsubProfile = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) setShopProfile(snap.data());
       else setShopProfile({ shopName: 'My Shop', address: '', phone: '' });
-    });
+    }, (err) => console.error("Firestore error:", err));
 
     const unsubProducts = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'products'), (s) => {
-      const data = s.docs.map(d => ({ id: d.id, ...d.data() }));
-      setProducts(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    });
+      setProducts(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    }, (err) => console.error("Firestore error:", err));
 
     const unsubOrders = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'orders'), (s) => {
-      const data = s.docs.map(d => ({ id: d.id, ...d.data() }));
-      setOrders(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    });
+      setOrders(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    }, (err) => console.error("Firestore error:", err));
 
     const unsubExpenses = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'expenses'), (s) => {
-      const data = s.docs.map(d => ({ id: d.id, ...d.data() }));
-      setExpenses(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    });
+      setExpenses(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    }, (err) => console.error("Firestore error:", err));
 
     return () => { unsubProfile(); unsubProducts(); unsubOrders(); unsubExpenses(); };
   }, [user]);
@@ -227,6 +226,7 @@ export default function App() {
     </div>
   );
 
+  // যদি ইউজার একদমই না থাকে তবেই অথ স্ক্রিন দেখাবে
   if (!user) return <AuthScreen showToast={showToast} />;
 
   return (
@@ -256,7 +256,7 @@ export default function App() {
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{shopProfile?.shopName?.charAt(0)}</div>
-             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email}</p></div>
+             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email || 'Anonymous User'}</p></div>
            </div>
            <button onClick={() => {if(confirm("লগ আউট করবেন?")) signOut(auth)}} className="w-full flex items-center justify-center gap-2 text-rose-500 text-xs font-bold py-3 hover:bg-rose-50 rounded-xl transition border border-transparent hover:border-rose-100">
              <LogOut size={14}/> লগ আউট
@@ -293,30 +293,68 @@ const NavItem = ({ active, onClick, icon, label }) => (
 // --- VIEW COMPONENTS ---
 const DashboardView = ({ products, orders, expenses }) => {
     const [showProfit, setShowProfit] = useState(false);
-    const stats = useMemo(() => {
-        const totalSales = orders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0);
-        const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-        let totalCOGS = 0;
-        orders.forEach(order => order.items?.forEach(item => totalCOGS += (Number(item.buyPrice || 0) * Number(item.qty || 0))));
-        const netProfit = totalSales - totalCOGS - totalExpense;
-        return { totalSales, totalExpense, netProfit };
-    }, [orders, expenses]);
+    const [timeFilter, setTimeFilter] = useState('all'); // all, today, week, month, year
 
-    const chartData = useMemo(() => orders.slice(0, 7).reverse().map(o => ({ 
+    const filteredData = useMemo(() => {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000;
+      const startOfWeek = startOfDay - (now.getDay() * 86400);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000;
+      const startOfYear = new Date(now.getFullYear(), 0, 1).getTime() / 1000;
+
+      const filterFn = (item) => {
+        const time = item.createdAt?.seconds || 0;
+        if (timeFilter === 'today') return time >= startOfDay;
+        if (timeFilter === 'week') return time >= startOfWeek;
+        if (timeFilter === 'month') return time >= startOfMonth;
+        if (timeFilter === 'year') return time >= startOfYear;
+        return true;
+      };
+
+      const fOrders = orders.filter(filterFn);
+      const fExpenses = expenses.filter(filterFn);
+
+      const totalSales = fOrders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0);
+      const totalExpense = fExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      
+      let totalCOGS = 0;
+      fOrders.forEach(order => order.items?.forEach(item => {
+        totalCOGS += (Number(item.buyPrice || 0) * Number(item.qty || 0));
+      }));
+
+      const netProfit = totalSales - totalCOGS - totalExpense;
+
+      return { totalSales, totalExpense, totalCOGS, netProfit, fOrders };
+    }, [orders, expenses, timeFilter]);
+
+    const chartData = useMemo(() => filteredData.fOrders.slice(0, 10).reverse().map(o => ({ 
       name: o.customerName?.slice(0, 5) || 'Sale', 
       sales: Number(o.totalAmount) || 0 
-    })), [orders]);
+    })), [filteredData.fOrders]);
 
     return (
         <div className="space-y-8 animate-in fade-in">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="মোট বিক্রয়" value={`৳${stats.totalSales.toLocaleString()}`} icon={<ShoppingBag className="text-blue-600"/>} color="bg-blue-50" />
-                <StatCard title="মোট খরচ" value={`৳${stats.totalExpense.toLocaleString()}`} icon={<CreditCard className="text-rose-600"/>} color="bg-rose-50" />
-                <StatCard title="নিট মুনাফা" value={showProfit ? `৳${stats.netProfit.toLocaleString()}` : "****"} icon={showProfit ? <EyeOff className="text-emerald-600"/> : <Eye className="text-emerald-600"/>} color="bg-emerald-50" onClick={() => setShowProfit(!showProfit)} cursor="cursor-pointer" />
-                <StatCard title="মোট পণ্য" value={products.length} icon={<Package className="text-indigo-600"/>} color="bg-indigo-50" />
+            <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-slate-100 w-fit">
+              {['today', 'week', 'month', 'year', 'all'].map((f) => (
+                <button 
+                  key={f}
+                  onClick={() => setTimeFilter(f)}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${timeFilter === f ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+                >
+                  {f === 'today' ? 'আজ' : f === 'week' ? 'সপ্তাহ' : f === 'month' ? 'মাস' : f === 'year' ? 'বছর' : 'সব'}
+                </button>
+              ))}
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="মোট বিক্রয়" value={`৳${filteredData.totalSales.toLocaleString()}`} icon={<ShoppingBag className="text-blue-600"/>} color="bg-blue-50" />
+                <StatCard title="মোট খরচ" value={`৳${filteredData.totalExpense.toLocaleString()}`} icon={<CreditCard className="text-rose-600"/>} color="bg-rose-50" />
+                <StatCard title="মোট ক্রয়মূল্য" value={`৳${filteredData.totalCOGS.toLocaleString()}`} icon={<Package className="text-orange-600"/>} color="bg-orange-50" />
+                <StatCard title="নিট মুনাফা" value={showProfit ? `৳${filteredData.netProfit.toLocaleString()}` : "****"} icon={showProfit ? <EyeOff className="text-emerald-600"/> : <Eye className="text-emerald-600"/>} color="bg-emerald-50" onClick={() => setShowProfit(!showProfit)} cursor="cursor-pointer" />
+            </div>
+
             <Card className="h-96 shadow-lg border-none">
-                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ (সাম্প্রতিক)</h3>
+                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ (নির্বাচিত সময়)</h3>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{bottom: 20, left: 10}}>
                         <defs><linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
@@ -549,6 +587,7 @@ const OrderListView = ({ orders, user, shopProfile, showToast }) => {
 const InvoiceModal = ({ order, shopProfile, onClose }) => {
     const printRef = useRef();
     const dateStr = order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : 'N/A';
+    
     return (
         <div className="fixed inset-0 bg-slate-900/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md overflow-y-auto">
             <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in">
@@ -571,13 +610,21 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
                     <table className="w-full mb-8"><thead className="bg-slate-900 text-white text-[10px] uppercase font-black"><tr><th className="p-4 text-left rounded-l-2xl">Item</th><th className="p-4 text-center">Qty</th><th className="p-4 text-right">Price</th><th className="p-4 text-right rounded-r-2xl">Total</th></tr></thead>
                         <tbody>{order.items?.map((i,idx)=>(<tr key={idx} className="text-sm border-b"><td className="p-4 font-bold">{i.name} ({i.size})</td><td className="p-4 text-center font-black">{i.qty}</td><td className="p-4 text-right">৳{i.sellPrice}</td><td className="p-4 text-right font-black">৳{i.sellPrice * i.qty}</td></tr>))}</tbody>
                     </table>
-                    <div className="flex justify-end"><div className="w-72 space-y-3 bg-slate-50 p-8 rounded-3xl text-sm">
-                        <div className="flex justify-between font-bold"><span>Sub-total</span><span>৳{order.subTotal}</span></div>
-                        <div className="flex justify-between font-bold pb-3 border-b"><span>Delivery</span><span>৳{order.deliveryCharge}</span></div>
-                        <div className="flex justify-between text-2xl font-black pt-2"><span>Total</span><span>৳{order.totalAmount}</span></div>
-                        <div className="flex justify-between font-bold text-emerald-600"><span>Paid</span><span>- ৳{order.paidAmount}</span></div>
-                        <div className="flex justify-between text-lg font-black text-rose-600 pt-2 border-t"><span>Due</span><span>৳{order.dueAmount}</span></div>
-                    </div></div>
+                    <div className="flex justify-end">
+                      <div className="w-80 space-y-4 bg-slate-50 p-8 rounded-3xl text-sm border border-slate-100">
+                        <div className="flex justify-between font-bold text-slate-500"><span>Sub-total</span><span>৳{order.subTotal}</span></div>
+                        <div className="flex justify-between font-bold text-slate-500 pb-3 border-b border-slate-200"><span>Delivery</span><span>৳{order.deliveryCharge}</span></div>
+                        
+                        {/* Important Fix: Total amount visibility */}
+                        <div className="flex justify-between items-center py-2">
+                           <span className="text-2xl font-black text-slate-800">Total</span>
+                           <span className="text-2xl font-black text-slate-800">৳{order.totalAmount}</span>
+                        </div>
+                        
+                        <div className="flex justify-between font-bold text-emerald-600 pt-2 border-t border-slate-200"><span>Paid</span><span>- ৳{order.paidAmount}</span></div>
+                        <div className="flex justify-between text-xl font-black text-rose-600 pt-2 border-t border-slate-300"><span>Due</span><span>৳{order.dueAmount}</span></div>
+                      </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -619,27 +666,97 @@ const ExpenseView = ({ expenses, user, showToast }) => {
     );
 };
 
-const CustomerView = ({ orders, user }) => {
+const CustomerView = ({ orders, user, showToast }) => {
+    const [editCustomer, setEditCustomer] = useState(null);
+    
     const customers = useMemo(() => {
         const map = {};
         orders.forEach(o => {
             if(!map[o.phone]) map[o.phone] = { name: o.customerName, phone: o.phone, address: o.address, totalOrders: 0, totalSpent: 0 };
-            map[o.phone].totalOrders += 1; map[o.phone].totalSpent += (Number(o.totalAmount) || 0);
+            map[o.phone].totalOrders += 1; 
+            map[o.phone].totalSpent += (Number(o.totalAmount) || 0);
         });
         return Object.values(map);
     }, [orders]);
+
+    const handleUpdateCustomer = async (e) => {
+      e.preventDefault();
+      const batch = writeBatch(db);
+      const ordersToUpdate = orders.filter(o => o.phone === editCustomer.oldPhone);
+      
+      ordersToUpdate.forEach(o => {
+        const orderRef = doc(db, 'artifacts', appId, 'users', user.uid, 'orders', o.id);
+        batch.update(orderRef, {
+          customerName: editCustomer.name,
+          phone: editCustomer.phone,
+          address: editCustomer.address
+        });
+      });
+
+      try {
+        await batch.commit();
+        showToast("কাস্টমার তথ্য আপডেট হয়েছে");
+        setEditCustomer(null);
+      } catch (err) {
+        showToast("আপডেট করা যায়নি", "error");
+      }
+    };
+
+    const handleDeleteCustomer = async (phone) => {
+      if(!confirm("এই কাস্টমারের সব অর্ডার ডিলিট হয়ে যাবে। নিশ্চিত তো?")) return;
+      const batch = writeBatch(db);
+      const ordersToDelete = orders.filter(o => o.phone === phone);
+      ordersToDelete.forEach(o => {
+        const orderRef = doc(db, 'artifacts', appId, 'users', user.uid, 'orders', o.id);
+        batch.delete(orderRef);
+      });
+
+      try {
+        await batch.commit();
+        showToast("কাস্টমার ডিলিট হয়েছে");
+      } catch (err) {
+        showToast("ডিলিট করা যায়নি", "error");
+      }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in">
             <h2 className="text-2xl font-black text-slate-800">কাস্টমার ডাটাবেজ</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {customers.map((c, i) => (
                     <Card key={i} className="hover:shadow-2xl transition border group relative">
-                        <div className="flex items-start justify-between mb-4"><div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">{c.name.charAt(0)}</div><span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">{c.totalOrders} Orders</span></div>
-                        <h3 className="font-black text-xl text-slate-800">{c.name}</h3><p className="text-sm text-slate-500 font-bold flex items-center gap-1.5 mt-1"><Phone size={14} className="text-indigo-400"/> {c.phone}</p>
-                        <div className="pt-6 mt-6 border-t border-slate-50 flex justify-between items-center"><span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Lifetime Value</span><span className="text-xl font-black text-slate-800">৳{c.totalSpent.toLocaleString()}</span></div>
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg">{c.name.charAt(0)}</div>
+                          <div className="flex gap-2">
+                             <button onClick={() => setEditCustomer({...c, oldPhone: c.phone})} className="p-2 bg-slate-50 text-indigo-500 rounded-xl hover:bg-indigo-50 transition"><Edit2 size={16}/></button>
+                             <button onClick={() => handleDeleteCustomer(c.phone)} className="p-2 bg-slate-50 text-rose-500 rounded-xl hover:bg-rose-50 transition"><Trash2 size={16}/></button>
+                          </div>
+                        </div>
+                        <h3 className="font-black text-xl text-slate-800">{c.name}</h3>
+                        <p className="text-sm text-slate-500 font-bold flex items-center gap-1.5 mt-1"><Phone size={14} className="text-indigo-400"/> {c.phone}</p>
+                        <p className="text-xs text-slate-400 mt-2 line-clamp-1">{c.address || 'ঠিকানা নেই'}</p>
+                        <div className="pt-6 mt-6 border-t border-slate-50 flex justify-between items-center">
+                          <div className="text-center bg-slate-50 p-2 rounded-xl flex-1">
+                            <p className="text-[9px] font-black text-slate-400 uppercase">Orders</p>
+                            <p className="text-sm font-black text-indigo-600">{c.totalOrders}</p>
+                          </div>
+                          <div className="text-right flex-1">
+                            <p className="text-[9px] font-black text-slate-400 uppercase">Spent</p>
+                            <p className="text-lg font-black text-slate-800">৳{c.totalSpent.toLocaleString()}</p>
+                          </div>
+                        </div>
                     </Card>
                 ))}
             </div>
+
+            <Modal isOpen={!!editCustomer} onClose={() => setEditCustomer(null)} title="কাস্টমার এডিট করুন">
+              <form onSubmit={handleUpdateCustomer} className="space-y-5">
+                <Input label="নাম" value={editCustomer?.name} onChange={e => setEditCustomer({...editCustomer, name: e.target.value})} required />
+                <Input label="ফোন" value={editCustomer?.phone} onChange={e => setEditCustomer({...editCustomer, phone: e.target.value})} required />
+                <Input label="ঠিকানা" value={editCustomer?.address} onChange={e => setEditCustomer({...editCustomer, address: e.target.value})} />
+                <Button type="submit" className="w-full py-4 text-lg">আপডেট নিশ্চিত করুন</Button>
+              </form>
+            </Modal>
         </div>
     );
 };
