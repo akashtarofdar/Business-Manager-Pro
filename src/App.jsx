@@ -17,17 +17,28 @@ import {
   deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc, where, getDocs, writeBatch
 } from 'firebase/firestore';
 
-// --- ফায়ারবেস কনফিগারেশন ---
-const firebaseConfig = {
-  apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
-  authDomain: "business-manager-7d11a.firebaseapp.com",
-  projectId: "business-manager-7d11a",
-  storageBucket: "business-manager-7d11a.firebasestorage.app",
-  messagingSenderId: "655200131586",
-  appId: "1:655200131586:web:0b41af39a725542b8ae51b",
-  measurementId: "G-785LXLP9X2"
+// --- ফায়ারবেস কনফিগারেশন (CRITICAL FIX) ---
+// এনভায়রনমেন্ট থেকে কনফিগারেশন ডাটা নেওয়ার চেষ্টা করা হচ্ছে যাতে টোকেন মিসম্যাচ না হয়
+const getFirebaseConfig = () => {
+  try {
+    if (typeof __firebase_config !== 'undefined') {
+      return JSON.parse(__firebase_config);
+    }
+  } catch (e) {
+    console.error("Firebase config parse error:", e);
+  }
+  return {
+    apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
+    authDomain: "business-manager-7d11a.firebaseapp.com",
+    projectId: "business-manager-7d11a",
+    storageBucket: "business-manager-7d11a.firebasestorage.app",
+    messagingSenderId: "655200131586",
+    appId: "1:655200131586:web:0b41af39a725542b8ae51b",
+    measurementId: "G-785LXLP9X2"
+  };
 };
 
+const firebaseConfig = getFirebaseConfig();
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'business-manager-v7-multiuser';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -169,13 +180,15 @@ export default function App() {
           try {
             await signInWithCustomToken(auth, __initial_auth_token);
           } catch (tokenErr) {
-            console.error("Token sign-in error, falling back to anonymous:", tokenErr);
+            // টোকেন এরর হলে এনোনিমাস লগইন করা হবে যাতে ডাটাবেজ অ্যাক্সেস পাওয়া যায়
             await signInAnonymously(auth);
           }
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) { console.error("Auth error:", err); }
+      } catch (err) { 
+        console.error("Auth initialization failed:", err); 
+      }
     };
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -187,23 +200,24 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+
     const profileRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
     const unsubProfile = onSnapshot(profileRef, (snap) => {
       if (snap.exists()) setShopProfile(snap.data());
       else setShopProfile({ shopName: 'My Shop', address: '', phone: '' });
-    }, (err) => console.error("Profile load error:", err));
+    }, (err) => console.error("Firestore Profile Error:", err));
 
     const unsubProducts = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'products'), (s) => {
       setProducts(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    }, (err) => console.error("Products load error:", err));
+    }, (err) => console.error("Firestore Products Error:", err));
 
     const unsubOrders = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'orders'), (s) => {
       setOrders(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    }, (err) => console.error("Orders load error:", err));
+    }, (err) => console.error("Firestore Orders Error:", err));
 
     const unsubExpenses = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'expenses'), (s) => {
       setExpenses(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    }, (err) => console.error("Expenses load error:", err));
+    }, (err) => console.error("Firestore Expenses Error:", err));
 
     return () => { unsubProfile(); unsubProducts(); unsubOrders(); unsubExpenses(); };
   }, [user]);
@@ -244,7 +258,7 @@ export default function App() {
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{shopProfile?.shopName?.charAt(0)}</div>
-             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email || 'Anonymous'}</p></div>
+             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email || 'User Session'}</p></div>
            </div>
            <button onClick={() => {if(confirm("লগ আউট করবেন?")) signOut(auth)}} className="w-full flex items-center justify-center gap-2 text-rose-500 text-xs font-bold py-3 hover:bg-rose-50 rounded-xl transition border border-transparent hover:border-rose-100">
              <LogOut size={14}/> লগ আউট
@@ -455,7 +469,20 @@ const POSView = ({ products, user, shopProfile, showToast }) => {
 
     const handleOrder = async () => {
         if(!cart.length || !customer.name || !customer.phone) return showToast("তথ্য অসম্পূর্ণ!", "error");
-        const orderData = { customerName: customer.name, phone: customer.phone, address: customer.address, items: cart, ...financials, paidAmount: Number(customer.advance) || 0, dueAmount: financials.due, status: financials.due > 0 ? 'Due' : 'Paid', lastPaymentMethod: paymentMethod, createdAt: serverTimestamp() };
+        const orderData = { 
+          customerName: customer.name, 
+          phone: customer.phone, 
+          address: customer.address, 
+          items: cart, 
+          subTotal: financials.subTotal,
+          deliveryCharge: Number(customer.deliveryCharge) || 0,
+          totalAmount: financials.total, 
+          paidAmount: Number(customer.advance) || 0, 
+          dueAmount: financials.due, 
+          status: financials.due > 0 ? 'Due' : 'Paid', 
+          lastPaymentMethod: paymentMethod, 
+          createdAt: serverTimestamp() 
+        };
         try {
           const ref = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'orders'), orderData);
           setInvoiceOrder({...orderData, id: ref.id, createdAt: { seconds: Math.floor(Date.now()/1000) } });
@@ -574,7 +601,7 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
     const printRef = useRef();
     const dateStr = order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : 'N/A';
     
-    // Safety check for display
+    // Safety check for display values
     const delivery = Number(order.deliveryCharge) || 0;
     const total = Number(order.totalAmount) || 0;
     const subtotal = Number(order.subTotal) || 0;
