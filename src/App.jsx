@@ -18,15 +18,12 @@ import {
 } from 'firebase/firestore';
 
 // --- ফায়ারবেস কনফিগারেশন (CRITICAL FIX) ---
-// এনভায়রনমেন্ট থেকে কনফিগারেশন ডাটা নেওয়ার চেষ্টা করা হচ্ছে যাতে টোকেন মিসম্যাচ না হয়
 const getFirebaseConfig = () => {
   try {
     if (typeof __firebase_config !== 'undefined') {
       return JSON.parse(__firebase_config);
     }
-  } catch (e) {
-    console.error("Firebase config parse error:", e);
-  }
+  } catch (e) {}
   return {
     apiKey: "AIzaSyDlC-GAtKekX_SPjacRvzg7gKTGGQChpzA",
     authDomain: "business-manager-7d11a.firebaseapp.com",
@@ -180,12 +177,10 @@ export default function App() {
           try {
             await signInWithCustomToken(auth, __initial_auth_token);
           } catch (tokenErr) {
-            // টোকেন এরর হলে এনোনিমাস লগইন করা হবে যাতে ডাটাবেজ অ্যাক্সেস পাওয়া যায়
-            await signInAnonymously(auth);
+            console.error("Token sign-in error");
           }
-        } else {
-          await signInAnonymously(auth);
         }
+        // signInAnonymously সরানো হয়েছে যাতে রিলোড দিলে অটো অন্য এনোনিমাস প্রোফাইল না খোলে।
       } catch (err) { 
         console.error("Auth initialization failed:", err); 
       }
@@ -258,7 +253,7 @@ export default function App() {
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 shadow-sm mb-4">
              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{shopProfile?.shopName?.charAt(0)}</div>
-             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email || 'User Session'}</p></div>
+             <div className="overflow-hidden"><p className="text-xs font-bold truncate text-slate-800">{shopProfile?.shopName}</p><p className="text-[10px] text-slate-400 truncate">{user.email || 'User'}</p></div>
            </div>
            <button onClick={() => {if(confirm("লগ আউট করবেন?")) signOut(auth)}} className="w-full flex items-center justify-center gap-2 text-rose-500 text-xs font-bold py-3 hover:bg-rose-50 rounded-xl transition border border-transparent hover:border-rose-100">
              <LogOut size={14}/> লগ আউট
@@ -315,7 +310,7 @@ const DashboardView = ({ products, orders, expenses }) => {
       const fOrders = orders.filter(filterFn);
       const fExpenses = expenses.filter(filterFn);
 
-      const totalSales = fOrders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0);
+      const totalSales = fOrders.reduce((s, o) => s + (Number(o.totalAmount || o.total) || 0), 0);
       const totalExpense = fExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       
       let totalCOGS = 0;
@@ -329,7 +324,7 @@ const DashboardView = ({ products, orders, expenses }) => {
 
     const chartData = useMemo(() => filteredStats.fOrders.slice(0, 10).reverse().map(o => ({ 
       name: o.customerName?.slice(0, 5) || 'Sale', 
-      sales: Number(o.totalAmount) || 0 
+      sales: Number(o.totalAmount || o.total) || 0 
     })), [filteredStats.fOrders]);
 
     return (
@@ -349,7 +344,7 @@ const DashboardView = ({ products, orders, expenses }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="মোট বিক্রয়" value={`৳${filteredStats.totalSales.toLocaleString()}`} icon={<ShoppingBag className="text-blue-600"/>} color="bg-blue-50" />
                 <StatCard title="মোট খরচ" value={`৳${filteredStats.totalExpense.toLocaleString()}`} icon={<CreditCard className="text-rose-600"/>} color="bg-rose-50" />
-                <StatCard title="ক্রয়মূল্য (Jersey)" value={`৳${filteredStats.totalCOGS.toLocaleString()}`} icon={<Package className="text-orange-600"/>} color="bg-orange-50" />
+                <StatCard title="ক্রয়মূল্য (Jersey)" value={`৳${filteredStats.totalCOGS.toLocaleString()}`} icon={<Package className="text-orange-600"/>} color="bg-orange-50" />
                 <StatCard title="নিট মুনাফা" value={showProfit ? `৳${filteredStats.netProfit.toLocaleString()}` : "****"} icon={showProfit ? <EyeOff className="text-emerald-600"/> : <Eye className="text-emerald-600"/>} color="bg-emerald-50" onClick={() => setShowProfit(!showProfit)} cursor="cursor-pointer" />
             </div>
 
@@ -601,9 +596,8 @@ const InvoiceModal = ({ order, shopProfile, onClose }) => {
     const printRef = useRef();
     const dateStr = order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000).toLocaleDateString('bn-BD') : 'N/A';
     
-    // Safety check for display values
     const delivery = Number(order.deliveryCharge) || 0;
-    const total = Number(order.totalAmount) || 0;
+    const total = Number(order.totalAmount || order.total) || 0;
     const subtotal = Number(order.subTotal) || 0;
     const paid = Number(order.paidAmount) || 0;
     const due = Number(order.dueAmount) || 0;
@@ -695,7 +689,7 @@ const CustomerView = ({ orders, user, showToast }) => {
         orders.forEach(o => {
             if(!map[o.phone]) map[o.phone] = { name: o.customerName, phone: o.phone, address: o.address, totalOrders: 0, totalSpent: 0 };
             map[o.phone].totalOrders += 1; 
-            map[o.phone].totalSpent += (Number(o.totalAmount) || 0);
+            map[o.phone].totalSpent += (Number(o.totalAmount || o.total) || 0);
         });
         return Object.values(map);
     }, [orders]);
@@ -815,7 +809,6 @@ const Select = ({ label, value, onChange, options }) => (
   </div>
 );
 
-// CSS for hiding scrollbar
 if (typeof document !== 'undefined') {
   const styleSheet = document.createElement("style");
   styleSheet.innerText = `.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`;
