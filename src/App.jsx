@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ShoppingBag, CreditCard, Users, Menu, X, Plus, Search, 
   Trash2, Save, Printer, AlertCircle, Package, Phone, CheckCircle, FileText, 
   Settings, List, DollarSign, Eye, EyeOff, Banknote, Smartphone, Landmark, 
-  Edit2, Info, MapPin, TrendingUp, Minus, Check, LogOut, Store, ArrowRight, Lock, Filter, ChevronRight, UserPlus, LogIn, Calendar
+  Edit2, Info, MapPin, TrendingUp, Minus, Check, LogOut, Store, ArrowRight, Lock, Filter, ChevronRight, UserPlus, LogIn, Calendar, Clock
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import { 
   getFirestore, collection, addDoc, query, onSnapshot, doc, 
-  deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc, where, getDocs, writeBatch
+  deleteDoc, updateDoc, serverTimestamp, setDoc, getDoc, where, getDocs, writeBatch, Timestamp
 } from 'firebase/firestore';
 
 // --- ফায়ারবেস কনফিগারেশন (CRITICAL FIX) ---
@@ -180,7 +180,6 @@ export default function App() {
             console.error("Token sign-in error");
           }
         }
-        // signInAnonymously সরানো হয়েছে যাতে রিলোড দিলে অটো অন্য এনোনিমাস প্রোফাইল না খোলে।
       } catch (err) { 
         console.error("Auth initialization failed:", err); 
       }
@@ -289,7 +288,13 @@ const NavItem = ({ active, onClick, icon, label }) => (
 // --- VIEW COMPONENTS ---
 const DashboardView = ({ products, orders, expenses }) => {
     const [showProfit, setShowProfit] = useState(false);
-    const [timeFilter, setTimeFilter] = useState('all'); 
+    const [filterType, setFilterType] = useState('quick'); // 'quick', 'date', 'month', 'year'
+    const [quickFilter, setQuickFilter] = useState('all'); 
+    
+    // Custom filter states
+    const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0]);
+    const [customMonth, setCustomMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [customYear, setCustomYear] = useState(new Date().getFullYear().toString());
 
     const filteredStats = useMemo(() => {
       const now = new Date();
@@ -299,11 +304,34 @@ const DashboardView = ({ products, orders, expenses }) => {
       const startOfYear = new Date(now.getFullYear(), 0, 1).getTime() / 1000;
 
       const filterFn = (item) => {
-        const time = item.createdAt?.seconds || 0;
-        if (timeFilter === 'today') return time >= startOfDay;
-        if (timeFilter === 'week') return time >= startOfWeek;
-        if (timeFilter === 'month') return time >= startOfMonth;
-        if (timeFilter === 'year') return time >= startOfYear;
+        const timeSeconds = item.createdAt?.seconds || 0;
+        const itemDate = new Date(timeSeconds * 1000);
+        
+        if (filterType === 'quick') {
+            if (quickFilter === 'today') return timeSeconds >= startOfDay;
+            if (quickFilter === 'week') return timeSeconds >= startOfWeek;
+            if (quickFilter === 'month') return timeSeconds >= startOfMonth;
+            if (quickFilter === 'year') return timeSeconds >= startOfYear;
+            return true;
+        }
+        
+        if (filterType === 'date') {
+            // Compare YYYY-MM-DD
+            // Adjust for timezone offset if needed, but simple string split usually works for local date inputs
+            // Using toLocaleDateString('en-CA') gives YYYY-MM-DD in local time
+            const itemDateStr = itemDate.toLocaleDateString('en-CA');
+            return itemDateStr === customDate;
+        }
+
+        if (filterType === 'month') {
+            const itemMonthStr = itemDate.toLocaleDateString('en-CA').slice(0, 7); // YYYY-MM
+            return itemMonthStr === customMonth;
+        }
+
+        if (filterType === 'year') {
+            return itemDate.getFullYear().toString() === customYear;
+        }
+
         return true;
       };
 
@@ -320,7 +348,7 @@ const DashboardView = ({ products, orders, expenses }) => {
 
       const netProfit = totalSales - totalCOGS - totalExpense;
       return { totalSales, totalExpense, totalCOGS, netProfit, fOrders };
-    }, [orders, expenses, timeFilter]);
+    }, [orders, expenses, filterType, quickFilter, customDate, customMonth, customYear]);
 
     const chartData = useMemo(() => filteredStats.fOrders.slice(0, 10).reverse().map(o => ({ 
       name: o.customerName?.slice(0, 5) || 'Sale', 
@@ -329,16 +357,50 @@ const DashboardView = ({ products, orders, expenses }) => {
 
     return (
         <div className="space-y-8 animate-in fade-in">
-            <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-slate-100 w-fit shadow-sm">
-              {['today', 'week', 'month', 'year', 'all'].map((f) => (
-                <button 
-                  key={f}
-                  onClick={() => setTimeFilter(f)}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${timeFilter === f ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
-                >
-                  {f === 'today' ? 'আজ' : f === 'week' ? 'সপ্তাহ' : f === 'month' ? 'মাস' : f === 'year' ? 'বছর' : 'সব'}
-                </button>
-              ))}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+              
+              {/* Filter Type Selection */}
+              <div className="flex gap-2">
+                  <select 
+                    value={filterType} 
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                      <option value="quick">Quick Filter</option>
+                      <option value="date">তারিখ অনুযায়ী</option>
+                      <option value="month">মাস অনুযায়ী</option>
+                      <option value="year">বছর অনুযায়ী</option>
+                  </select>
+              </div>
+
+              {/* Dynamic Filter Controls */}
+              <div className="flex-1">
+                  {filterType === 'quick' && (
+                    <div className="flex flex-wrap gap-2">
+                        {['today', 'week', 'month', 'year', 'all'].map((f) => (
+                            <button key={f} onClick={() => setQuickFilter(f)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${quickFilter === f ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}>
+                                {f === 'today' ? 'আজ' : f === 'week' ? 'সপ্তাহ' : f === 'month' ? 'মাস' : f === 'year' ? 'বছর' : 'সব'}
+                            </button>
+                        ))}
+                    </div>
+                  )}
+
+                  {filterType === 'date' && (
+                      <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 outline-none focus:border-indigo-500"/>
+                  )}
+
+                  {filterType === 'month' && (
+                      <input type="month" value={customMonth} onChange={(e) => setCustomMonth(e.target.value)} className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 outline-none focus:border-indigo-500"/>
+                  )}
+
+                  {filterType === 'year' && (
+                      <select value={customYear} onChange={(e) => setCustomYear(e.target.value)} className="px-4 py-2 rounded-xl border border-slate-200 font-bold text-slate-700 outline-none focus:border-indigo-500">
+                          {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(y => (
+                              <option key={y} value={y}>{y}</option>
+                          ))}
+                      </select>
+                  )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -349,7 +411,7 @@ const DashboardView = ({ products, orders, expenses }) => {
             </div>
 
             <Card className="h-96 shadow-lg border-none">
-                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ (নির্বাচিত সময়)</h3>
+                <h3 className="font-bold text-slate-700 mb-8 flex items-center gap-2 text-lg"><TrendingUp size={24} className="text-indigo-600"/> বিক্রয় গ্রাফ (ফিল্টার করা)</h3>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData} margin={{bottom: 20, left: 10}}>
                         <defs><linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
@@ -446,6 +508,7 @@ const POSView = ({ products, user, shopProfile, showToast }) => {
     const [filter, setFilter] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [invoiceOrder, setInvoiceOrder] = useState(null);
+    const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]); // New Date State
 
     const addToCart = (p) => {
         const exist = cart.find(i => i.id === p.id);
@@ -464,6 +527,13 @@ const POSView = ({ products, user, shopProfile, showToast }) => {
 
     const handleOrder = async () => {
         if(!cart.length || !customer.name || !customer.phone) return showToast("তথ্য অসম্পূর্ণ!", "error");
+        
+        // Creating timestamp from selected date
+        // Preserving current time for ordering within the day, or setting to selected date time
+        const selectedDate = new Date(orderDate);
+        const now = new Date();
+        selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
         const orderData = { 
           customerName: customer.name, 
           phone: customer.phone, 
@@ -476,11 +546,11 @@ const POSView = ({ products, user, shopProfile, showToast }) => {
           dueAmount: financials.due, 
           status: financials.due > 0 ? 'Due' : 'Paid', 
           lastPaymentMethod: paymentMethod, 
-          createdAt: serverTimestamp() 
+          createdAt: Timestamp.fromDate(selectedDate) // Use selected date
         };
         try {
           const ref = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'orders'), orderData);
-          setInvoiceOrder({...orderData, id: ref.id, createdAt: { seconds: Math.floor(Date.now()/1000) } });
+          setInvoiceOrder({...orderData, id: ref.id, createdAt: { seconds: selectedDate.getTime() / 1000 } });
           setCart([]); setCustomer({name:'', phone:'', address:'', deliveryCharge:'0', advance:'0'});
           showToast("অর্ডার সফল!");
         } catch (err) { showToast("অর্ডার ফেইল!", "error"); }
@@ -519,6 +589,10 @@ const POSView = ({ products, user, shopProfile, showToast }) => {
                   ))}
                 </div>
                 <div className="space-y-4 border-t pt-4">
+                    <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                       <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest block mb-2">অর্ডার তারিখ</label>
+                       <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} className="w-full bg-white px-3 py-2 rounded-lg font-bold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-200"/>
+                    </div>
                     <div className="grid grid-cols-2 gap-3"><Input placeholder="নাম" value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/><Input placeholder="ফোন" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/></div>
                     <Input placeholder="ঠিকানা" value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})}/>
                     <div className="grid grid-cols-2 gap-3"><Input label="ডেলিভারি" type="number" value={customer.deliveryCharge} onChange={e=>setCustomer({...customer,deliveryCharge:e.target.value})}/><Input label="অ্যাডভান্স" type="number" value={customer.advance} onChange={e=>setCustomer({...customer,advance:e.target.value})}/></div>
@@ -548,7 +622,7 @@ const OrderListView = ({ orders, user, shopProfile, showToast }) => {
         try {
           await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'orders', editPayment.id), { deliveryCharge: del, totalAmount: newTotal, paidAmount: newPaid, dueAmount: newDue, status: newDue <= 0 ? 'Paid' : 'Due' });
           setEditPayment(null); showToast("আপডেট সফল!");
-        } catch (err) { showToast("ভুল হয়েছে", "error"); }
+        } catch (err) { showToast("ভুল হয়েছে", "error"); }
     };
 
     return (
@@ -558,12 +632,15 @@ const OrderListView = ({ orders, user, shopProfile, showToast }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm border-collapse min-w-[800px]">
                   <thead className="bg-slate-50 border-b uppercase text-[11px] font-black text-slate-400 tracking-wider">
-                    <tr><th className="p-5">মেমো</th><th className="p-5">কাস্টমার</th><th className="p-5 text-right">বিল</th><th className="p-5 text-right">বকেয়া</th><th className="p-5 text-center">স্ট্যাটাস</th><th className="p-5 text-right">একশন</th></tr>
+                    <tr><th className="p-5">মেমো</th><th className="p-5">তারিখ</th><th className="p-5">কাস্টমার</th><th className="p-5 text-right">বিল</th><th className="p-5 text-right">বকেয়া</th><th className="p-5 text-center">স্ট্যাটাস</th><th className="p-5 text-right">একশন</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {orders.map(o => (
                       <tr key={o.id} className="hover:bg-slate-50/80 transition">
                         <td className="p-5 font-mono text-xs text-slate-400">#{o.id.slice(-6).toUpperCase()}</td>
+                        <td className="p-5 text-xs font-bold text-slate-500">
+                            {o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                        </td>
                         <td className="p-5"><p className="font-bold text-slate-800">{o.customerName}</p><p className="text-[10px] text-slate-400 font-bold">{o.phone}</p></td>
                         <td className="p-5 text-right font-black">৳{o.totalAmount}</td>
                         <td className="p-5 text-right font-black text-rose-500">৳{o.dueAmount}</td>
