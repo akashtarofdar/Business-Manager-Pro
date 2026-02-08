@@ -30,7 +30,7 @@ const firebaseConfig = {
   measurementId: "G-785LXLP9X2"
 };
 
-const DB_VERSION = "business-manager-7d11a-v1"; 
+const DB_VERSION = "business-manager-v7-multiuser"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
