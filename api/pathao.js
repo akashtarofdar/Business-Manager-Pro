@@ -1,5 +1,8 @@
 // Vercel Serverless Function - Pathao API Proxy
+// This avoids CORS issues when calling Pathao API from the browser
+
 export default async function handler(req, res) {
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -9,6 +12,7 @@ export default async function handler(req, res) {
 
   try {
     const { endpoint, method = 'POST', body, token } = req.body;
+
     if (!endpoint) return res.status(400).json({ error: 'endpoint required' });
 
     const baseUrl = 'https://api-hermes.pathao.com';
